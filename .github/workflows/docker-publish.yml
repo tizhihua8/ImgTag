@@ -25,20 +25,7 @@ env:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-    strategy:
-      fail-fast: false
-      max-parallel: 4  # 并行构建所有 target
-      matrix:
-        include:
-          - target: slim
-            suffix: ""
-          - target: full
-            suffix: "-local"
-          - target: slim-backend
-            suffix: "-backend"
-          - target: full-backend
-            suffix: "-backend-local"
+    timeout-minutes: 45
     
     steps:
       - name: Checkout code
@@ -79,19 +66,20 @@ jobs:
             echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
           fi
 
-      - name: Build and push
+      - name: Build and push (AIO)
         if: steps.check.outputs.has_credentials == 'true'
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./docker/Dockerfile
-          target: ${{ matrix.target }}
+          # 使用新的 All-in-One Dockerfile
+          file: ./docker/Dockerfile.aio
           push: true
-          platforms: linux/amd64,linux/arm64
+          # 仅构建 amd64 以加快速度（pgvector arm64 兼容性有时有问题，且很多服务器是 amd64），如果需要 arm64 可加回
+          platforms: linux/amd64
           tags: |
-            ${{ env.DOCKER_IMAGE }}:${{ steps.version.outputs.VERSION }}${{ matrix.suffix }}
-            ${{ env.DOCKER_IMAGE }}:latest${{ matrix.suffix }}
-          cache-from: type=gha,scope=${{ matrix.target }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.target }}
+            ${{ env.DOCKER_IMAGE }}:${{ steps.version.outputs.VERSION }}
+            ${{ env.DOCKER_IMAGE }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
           build-args: |
             BUILDKIT_INLINE_CACHE=1

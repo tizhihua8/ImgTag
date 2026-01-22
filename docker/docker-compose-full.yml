@@ -1,45 +1,18 @@
 version: '3.8'
 
 services:
-  # 数据库服务：包含 pgvector 扩展的 PostgreSQL
-  db:
-    image: pgvector/pgvector:pg16
-    container_name: imgtag-db
-    environment:
-      - POSTGRES_USER=imgtag
-      - POSTGRES_PASSWORD=imgtag_password
-      - POSTGRES_DB=imgtag
-    volumes:
-      - imgtag_pg_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"  # 暴露端口，方便本地工具连接查看
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U imgtag -d imgtag"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-  # 应用服务
   imgtag:
     image: tizhihua/imgtag:latest
-    container_name: imgtag-app
-    depends_on:
-      db:
-        condition: service_healthy
+    container_name: imgtag-aio
     ports:
       - "5173:8000"
-    environment:
-      # 连接到上面定义的 db 服务
-      - PG_CONNECTION_STRING=postgresql://imgtag:imgtag_password@db:5432/imgtag
-      # 以下配置为默认值，可根据需要取消注释修改
-      # - LOG_LEVEL=INFO
-      # - ADMIN_USERNAME=admin
-      # - ADMIN_PASSWORD=admin123
     volumes:
-      - ./data:/app/data
-      - ./models:/app/models
+      # 持久化数据库数据（必须！）
+      - ./data/db:/var/lib/postgresql/data
+      # 持久化上传文件和本地模型
+      - ./data/files:/app/data
+      - ./data/models:/app/models
+    # 环境变量通常已有默认值，这里可以覆盖
+    environment:
+      - TZ=Asia/Shanghai
     restart: unless-stopped
-
-volumes:
-  imgtag_pg_data:

@@ -1,0 +1,74 @@
+# =====================
+# Stage 1: Build Frontend
+# =====================
+FROM node:18-alpine AS frontend-builder
+WORKDIR /app/web
+
+# Install dependencies
+COPY web/package.json web/pnpm-lock.yaml ./
+RUN npm install -g pnpm && pnpm install --frozen-lockfile
+
+# Build
+COPY web/ .
+RUN pnpm build
+
+# =====================
+# Stage 2: Final Image (AIO)
+# =====================
+FROM pgvector/pgvector:pg16
+
+LABEL maintainer="127Wzc"
+ENV PYTHONUNBUFFERED=1
+
+USER root
+
+# 1. Install System Dependencies (Python, Supervisor, etc.)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 \
+    python3-pip \
+    python3-venv \
+    supervisor \
+    curl \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# 2. Setup Python Environment
+RUN python3 -m venv /app/venv
+ENV PATH="/app/venv/bin:$PATH"
+
+# 3. Install Python Dependencies
+COPY pyproject.toml .
+# We use pip to install directly from pyproject.toml (requires modern pip)
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir .[local]
+    # Note: [local] installs onnxruntime etc for local embedding support
+
+# 4. Copy Backend Code
+COPY src/imgtag ./imgtag
+COPY alembic.ini .
+
+# 5. Copy Frontend Build from Stage 1
+COPY --from=frontend-builder /app/web/dist /app/web_dist
+
+# 6. Copy Config Files
+COPY docker/supervisord.conf /app/supervisord.conf
+COPY docker/entrypoint-aio.sh /app/entrypoint.sh
+
+# 7. Setup Permissions
+RUN chmod +x /app/entrypoint.sh && \
+    mkdir -p /var/log/supervisord && \
+    mkdir -p /app/data && \
+    mkdir -p /app/models && \
+    mkdir -p /var/lib/postgresql/data && \
+    chown -R postgres:postgres /var/lib/postgresql/data
+
+# 8. Define Volumes
+# Persist Database Data and App Data
+VOLUME ["/var/lib/postgresql/data", "/app/data", "/app/models"]
+
+# 9. Expose Port
+EXPOSE 8000
+
+# 10. Start
+ENTRYPOINT ["/app/entrypoint.sh"]
