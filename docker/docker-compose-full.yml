@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  # 数据库服务：包含 pgvector 扩展的 PostgreSQL
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: imgtag-db
+    environment:
+      - POSTGRES_USER=imgtag
+      - POSTGRES_PASSWORD=imgtag_password
+      - POSTGRES_DB=imgtag
+    volumes:
+      - imgtag_pg_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"  # 暴露端口，方便本地工具连接查看
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U imgtag -d imgtag"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 应用服务
+  imgtag:
+    image: 127wzc/imgtag:latest
+    container_name: imgtag-app
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "5173:8000"
+    environment:
+      # 连接到上面定义的 db 服务
+      - PG_CONNECTION_STRING=postgresql://imgtag:imgtag_password@db:5432/imgtag
+      # 以下配置为默认值，可根据需要取消注释修改
+      # - LOG_LEVEL=INFO
+      # - ADMIN_USERNAME=admin
+      # - ADMIN_PASSWORD=admin123
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+    restart: unless-stopped
+
+volumes:
+  imgtag_pg_data:
