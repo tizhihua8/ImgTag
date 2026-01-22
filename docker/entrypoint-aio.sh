@@ -3,9 +3,11 @@ set -e
 
 PG_DATA="/var/lib/postgresql/data"
 
-# Check if database is initialized
-if [ -z "$(ls -A "$PG_DATA")" ]; then
+# Check if database is initialized by looking for PG_VERSION
+if [ ! -s "$PG_DATA/PG_VERSION" ]; then
     echo "Initializing PostgreSQL data directory..."
+    # Ensure directory is empty (except for lost+found) to make initdb happy
+    find "$PG_DATA" -mindepth 1 -maxdepth 1 -not -name "lost+found" -delete
     
     # Init DB
     chown -R postgres:postgres "$PG_DATA"
