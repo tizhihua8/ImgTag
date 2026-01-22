@@ -22,10 +22,7 @@ services:
 
   # 应用服务
   imgtag:
-    image: 127wzc/imgtag:latest
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile
+    image: tizhihua/imgtag:latest
     container_name: imgtag-app
     depends_on:
       db:
