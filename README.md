@@ -90,32 +90,51 @@
 
 ## 🐳 快速部署
 
-**前提条件**：PostgreSQL 数据库（启用 pgvector 扩展）
+## 🐳 快速部署
+
+本系统采用 **All-in-One** 设计，镜像内置了 PostgreSQL (pgvector) 数据库、后端 API 和前端界面，**无需额外配置数据库**即可直接运行。
+
+### 方式一：Docker Run (推荐)
+
+最快速的体验方式，一条命令即可启动：
+
+```bash
+docker run -d \
+  --name imgtag \
+  --restart unless-stopped \
+  -p 5173:8000 \
+  -v ./data/db:/var/lib/postgresql/data \
+  -v ./data/files:/app/data \
+  -v ./data/models:/app/models \
+  tizhihua/imgtag:latest
+```
+
+### 方式二：Docker Compose
+
+如果您更喜欢使用 Compose 管理：
 
 ```bash
 # 下载配置文件
-curl -O https://raw.githubusercontent.com/127Wzc/ImgTag/main/docker/docker-compose.yml
+curl -O https://raw.githubusercontent.com/tizhihua8/ImgTag/main/docker/docker-compose-full.yml
 
-# 编辑 docker-compose.yml，填入数据库连接
 # 启动服务
-docker-compose up -d
+docker-compose -f docker-compose-full.yml up -d
 ```
 
 访问：http://localhost:5173
 
-### 镜像版本
+### 镜像说明
 
 | 标签 | 说明 | 端口 |
 |-----|------|-----|
-| `latest` | 全栈精简版（推荐） | 5173 |
-| `latest-local` | 全栈 + 本地嵌入模型 | 5173 |
-| `latest-backend` | 纯后端 API | 8000 |
+| `latest` | **全能版** (内置数据库 + 前端 + 后端 + 本地模型支持) | 5173 |
 
-### 环境变量
+### 数据持久化 (重要)
 
-| 变量 | 说明 |
-|-----|------|
-| `PG_CONNECTION_STRING` | PostgreSQL 连接字符串（必填） |
+为防止删除容器后数据丢失，请务必挂载以下目录：
+* `/var/lib/postgresql/data`: 数据库文件
+* `/app/data`: 上传的图片和文件
+* `/app/models`: 本地 AI 模型文件
 
 ---
 
