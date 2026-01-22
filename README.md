@@ -90,8 +90,6 @@
 
 ## 🐳 快速部署
 
-## 🐳 快速部署
-
 本系统采用 **All-in-One** 设计，镜像内置了 PostgreSQL (pgvector) 数据库、后端 API 和前端界面，**无需额外配置数据库**即可直接运行。
 
 ### 方式一：Docker Run (推荐)
@@ -121,7 +119,11 @@ curl -O https://raw.githubusercontent.com/tizhihua8/ImgTag/main/docker/docker-co
 docker-compose -f docker-compose-full.yml up -d
 ```
 
-访问：http://localhost:5173
+### 访问与登录
+
+*   **访问地址**：http://localhost:5173
+*   **默认账号**：`admin`
+*   **默认密码**：`admin123`
 
 ### 镜像说明
 
