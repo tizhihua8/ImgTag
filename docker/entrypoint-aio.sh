@@ -11,14 +11,20 @@ if [ -z "$(ls -A "$PG_DATA")" ]; then
     chown -R postgres:postgres "$PG_DATA"
     su - postgres -c "/usr/lib/postgresql/16/bin/initdb -D $PG_DATA -U imgtag --auth=trust"
     
+    echo "Configuring pg_hba.conf for TCP access..."
+    echo "host all all 0.0.0.0/0 trust" >> "$PG_DATA/pg_hba.conf"
+    # Allow listening on all interfaces (though we only need localhost for internal app)
+    echo "listen_addresses='*'" >> "$PG_DATA/postgresql.conf"
+
     echo "Starting temporary PostgreSQL server for setup..."
     su - postgres -c "/usr/lib/postgresql/16/bin/pg_ctl -D $PG_DATA -w start"
     
     echo "Creating database and extension..."
-    # Create DB if not exists (initdb creates 'postgres' db by default)
-    # user 'imgtag' is superuser due to initdb -U imgtag
+    # Create DB and Extension
     su - postgres -c "psql -U imgtag -d postgres -c \"CREATE DATABASE imgtag;\"" || true
     su - postgres -c "psql -U imgtag -d imgtag -c \"CREATE EXTENSION IF NOT EXISTS vector;\""
+    # Ensure password matches what's in supervisord.conf (though 'trust' ignores it, it's good practice)
+    su - postgres -c "psql -U imgtag -d postgres -c \"ALTER USER imgtag WITH PASSWORD 'imgtag';\""
     
     echo "Stopping temporary PostgreSQL server..."
     su - postgres -c "/usr/lib/postgresql/16/bin/pg_ctl -D $PG_DATA -m fast -w stop"
