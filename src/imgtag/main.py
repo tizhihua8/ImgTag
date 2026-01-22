@@ -44,12 +44,32 @@ def run_migrations_sync():
     
     # 获取项目根目录
     current_file = Path(__file__)
-    project_root = current_file.parent.parent.parent
-    alembic_ini = project_root / "alembic.ini"
     
-    if not alembic_ini.exists():
-        logger.warning(f"未找到 alembic.ini: {alembic_ini}，跳过自动迁移")
+    # 尝试在不同层级寻找 alembic.ini
+    # 1. Docker 环境: /app/imgtag/main.py -> /app (2 levels up)
+    # 2. 本地开发: src/imgtag/main.py -> src -> root (3 levels up)
+    possible_roots = [
+        current_file.parent.parent,          # Docker: /app
+        current_file.parent.parent.parent,   # Local: project_root
+    ]
+    
+    alembic_ini = None
+    project_root = None
+    
+    for root in possible_roots:
+        temp_ini = root / "alembic.ini"
+        if temp_ini.exists():
+            alembic_ini = temp_ini
+            project_root = root
+            break
+    
+    if not alembic_ini:
+        # Fallback to the original logic for logging purposes
+        alembic_ini = possible_roots[-1] / "alembic.ini"
+        logger.warning(f"未找到 alembic.ini (尝试路径: {[str(r / 'alembic.ini') for r in possible_roots]})，跳过自动迁移")
         return False
+        
+    logger.info(f"找到 alembic.ini: {alembic_ini}")
     
     try:
         logger.info("检查并运行数据库迁移...")
